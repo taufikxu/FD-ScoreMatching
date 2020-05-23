@@ -1,0 +1,8 @@
+old_model: None
+annealing_schedule: lin
+n_samples_save: 100
+sample_step_size: 0.02
+sample_mode: visualize
+OOD_data: svhn
+Tmax: 100
+Tmin: 1

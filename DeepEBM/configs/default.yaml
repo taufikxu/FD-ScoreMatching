@@ -1,0 +1,32 @@
+# Training related
+loss_func: mdsm_baseline
+batch_size: 128
+noise_distribution: lin
+n_gpus: 2
+save_every: 5000
+dsm_pow: 2
+
+# model definition
+model_name: resnet18
+n_chan: 128
+normalization: None
+activation: elu
+dilation: false
+
+# Optimization
+optimizer: Adam
+beta1: 0.9
+beta2: 0.95
+max_lr: 0.00005
+min_lr: 0.0
+n_iter: 300000
+net_indx: 0
+clip_value: 0.1
+lr_schedule: cosine
+
+# ESM related
+ssm_eps: 0.005
+esm_eps: 0.1
+sigma0: 0.1
+min_noise: 0.05
+max_noise: 1.2
