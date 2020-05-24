@@ -248,12 +248,6 @@ def ssm_fd_nop(energy, samples):
     vectors = vectors / torch.norm(vectors, p=2, dim=-1, keepdim=True) * eps
     # print(samples.shape)
 
-    # batch_size = samples.shape[0]
-    # cat_input = torch.cat([samples, samples + vectors, samples - vectors], 0)
-    # cat_output = energy(cat_input)
-    # out_1 = cat_output[:batch_size]
-    # out_2 = cat_output[batch_size:2 * batch_size]
-    # out_3 = cat_output[2 * batch_size:]
     out_1 = energy(samples)
     out_2 = energy(samples + vectors)
     out_3 = energy(samples - vectors)
