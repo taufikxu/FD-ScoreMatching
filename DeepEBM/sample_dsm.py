@@ -78,8 +78,6 @@ def main():
         if FLAGS.sample_mode == "visualize":
             n_batches = 1
             FLAGS.batch_size = FLAGS.n_samples_save
-        elif FLAGS.sample_mode == "OOD":
-            continue
         else:
             n_batches = int(np.ceil(FLAGS.n_samples_save / FLAGS.batch_size))
 

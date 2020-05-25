@@ -19,7 +19,7 @@ CONFIG = {"FILES_TO_BE_SAVED": FILES_TO_BE_SAVED, "KEY_ARGUMENTS": KEY_ARGUMENTS
 text_logger, MODELS_FOLDER, SUMMARIES_FOLDER = save_context(__file__, CONFIG)
 
 torch.manual_seed(1234)
-torch.backends.cudnn.deterministic = True
+# torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = True
 np.random.seed(1235)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -30,7 +30,6 @@ logger = Logger(log_dir=SUMMARIES_FOLDER)
 itr = inputs.get_data_iter()
 netE = inputs.get_model()
 netE = netE.to(device)
-# if FLAGS.n_gpus > 1:
 netE = nn.DataParallel(netE)
 
 optimizerE, scheduler = inputs.get_optimizer_scheduler(netE)

@@ -55,7 +55,7 @@ def mdsm_tracetrick(energy, x_real, sigmas, sigma02, dim, mean=True):
     LS_loss = torch.sum(((x_real - x_noisy) / sigma02 + grad_x) * projection, dim=-1)
     LS_loss = LS_loss ** 2
     # print(LS_loss.shape)
-    LS_loss = LS_loss / (sigmas.view(-1) ** FLAGS.dsm_pow)
+    LS_loss = LS_loss / (sigmas.view(-1) ** 2)
     if mean is True:
         return LS_loss.mean()
     else:
@@ -98,12 +98,10 @@ def mdsm_fd(energy, x_real, sigmas, sigma02, dim):
     # print(esm_eps.shape)
     x_real = x_real.view(batchSize, dim)
     dsm_noise = sigmas * torch.randn_like(x_real)
-    # print(dsm_noise.shape)
     x_noisy = x_real + dsm_noise
     v_un = torch.randn_like(x_noisy)
     v_norm = torch.sqrt(torch.sum(v_un ** 2, dim=-1, keepdim=True))
     v = v_un / v_norm * esm_eps
-    # print(v.shape)
 
     cat_x = torch.cat([x_noisy + v, x_noisy - v], 0)
     logp = -energy(cat_x)
@@ -111,45 +109,41 @@ def mdsm_fd(energy, x_real, sigmas, sigma02, dim):
     logp1, logp2 = logp[:batchSize], logp[batchSize:]
     first_term = (logp1 - logp2) * 0.5
     second_term = torch.sum(v * (x_noisy - x_real), dim=-1) / sigma02
-    if FLAGS.dsm_pow != 1:
-        sigmas_weight = sigmas.view(-1) ** FLAGS.dsm_pow
-    else:
-        sigmas_weight = sigmas.view(-1)
-    LS_loss_e = (first_term + second_term) ** 2 / sigmas_weight
+    LS_loss_e = (first_term + second_term) ** 2 / (sigmas.view(-1) ** 2)
     LS_loss_e = LS_loss_e / esm_eps ** 2 * dim
     # print(LS_loss_e.shape)
     LS_loss = (LS_loss_e).mean()
     return LS_loss
 
 
-def mdsm_fd_abs(energy, x_real, sigmas, sigma02, dim):
-    batchSize = FLAGS.batch_size
-    esm_eps = FLAGS.esm_eps
-    # print(esm_eps.shape)
-    x_real = x_real.view(batchSize, dim)
-    dsm_noise = sigmas * torch.randn_like(x_real)
-    # print(dsm_noise.shape)
-    x_noisy = x_real + dsm_noise
-    v_un = torch.randn_like(x_noisy)
-    v_norm = torch.sqrt(torch.sum(v_un ** 2, dim=-1, keepdim=True))
-    v = v_un / v_norm * esm_eps
-    # print(v.shape)
+# def mdsm_fd_abs(energy, x_real, sigmas, sigma02, dim):
+#     batchSize = FLAGS.batch_size
+#     esm_eps = FLAGS.esm_eps
+#     # print(esm_eps.shape)
+#     x_real = x_real.view(batchSize, dim)
+#     dsm_noise = sigmas * torch.randn_like(x_real)
+#     # print(dsm_noise.shape)
+#     x_noisy = x_real + dsm_noise
+#     v_un = torch.randn_like(x_noisy)
+#     v_norm = torch.sqrt(torch.sum(v_un ** 2, dim=-1, keepdim=True))
+#     v = v_un / v_norm * esm_eps
+#     # print(v.shape)
 
-    cat_x = torch.cat([x_noisy + v, x_noisy - v], 0)
-    logp = -energy(cat_x)
+#     cat_x = torch.cat([x_noisy + v, x_noisy - v], 0)
+#     logp = -energy(cat_x)
 
-    logp1, logp2 = logp[:batchSize], logp[batchSize:]
-    first_term = (logp1 - logp2) * 0.5
-    second_term = torch.sum(v * (x_noisy - x_real), dim=-1) / sigma02
-    if FLAGS.dsm_pow != 1:
-        sigmas_weight = sigmas.view(-1) ** FLAGS.dsm_pow
-    else:
-        sigmas_weight = sigmas.view(-1)
-    LS_loss_e = torch.abs(first_term + second_term) / sigmas_weight
-    LS_loss_e = LS_loss_e / esm_eps ** 2 * dim
-    # print(LS_loss_e.shape)
-    LS_loss = (LS_loss_e).mean()
-    return LS_loss
+#     logp1, logp2 = logp[:batchSize], logp[batchSize:]
+#     first_term = (logp1 - logp2) * 0.5
+#     second_term = torch.sum(v * (x_noisy - x_real), dim=-1) / sigma02
+#     if FLAGS.dsm_pow != 1:
+#         sigmas_weight = sigmas.view(-1) ** FLAGS.dsm_pow
+#     else:
+#         sigmas_weight = sigmas.view(-1)
+#     LS_loss_e = torch.abs(first_term + second_term) / sigmas_weight
+#     LS_loss_e = LS_loss_e / esm_eps ** 2 * dim
+#     # print(LS_loss_e.shape)
+#     LS_loss = (LS_loss_e).mean()
+#     return LS_loss
 
 
 def mdsm_fd_nop(energy, x_real, sigmas, sigma02, dim):
