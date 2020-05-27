@@ -4,14 +4,12 @@ batch_size: 128
 noise_distribution: lin
 n_gpus: 2
 save_every: 5000
-dsm_pow: 2
 
 # model definition
 model_name: resnet18
 n_chan: 128
 normalization: None
 activation: elu
-dilation: false
 
 # Optimization
 optimizer: Adam

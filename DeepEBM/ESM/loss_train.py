@@ -35,7 +35,7 @@ def mdsm_baseline(energy, x_real, sigmas, sigma02, dim, mean=True):
     grad_x = torch.autograd.grad(E.sum(), x_noisy, create_graph=True)[0]
 
     LS_loss = torch.sum(((x_real - x_noisy) / sigma02 + grad_x) ** 2, dim=-1)
-    LS_loss = LS_loss / (sigmas.view(-1) ** FLAGS.dsm_pow)
+    LS_loss = LS_loss / (sigmas.view(-1) ** 2)
 
     if mean is True:
         return LS_loss.mean()
@@ -160,10 +160,7 @@ def mdsm_fd_nop(energy, x_real, sigmas, sigma02, dim):
 
     first_term = (logp1 - logp2) * 0.5
     second_term = torch.sum(v * (x_noisy - x_real), dim=-1) / sigma02
-    if FLAGS.dsm_pow != 1:
-        sigmas_weight = sigmas.view(-1) ** FLAGS.dsm_pow
-    else:
-        sigmas_weight = sigmas.view(-1)
+    sigmas_weight = sigmas.view(-1) ** 2
     LS_loss_e = (first_term + second_term) ** 2 / sigmas_weight
     LS_loss = LS_loss_e.mean() / FLAGS.esm_eps ** 2 * dim
     return LS_loss

@@ -32,27 +32,15 @@ class MyConvo2d(nn.Module):
     def __init__(self, input_dim, output_dim, kernel_size, stride=1, bias=True):
         super(MyConvo2d, self).__init__()
 
-        if FLAGS.dilation is True:
-            self.padding = kernel_size - 1
-            self.conv = nn.Conv2d(
-                input_dim,
-                output_dim,
-                kernel_size,
-                stride=stride,
-                dilation=2,
-                padding=self.padding,
-                bias=bias,
-            )
-        else:
-            self.padding = int((kernel_size - 1) / 2)
-            self.conv = nn.Conv2d(
-                input_dim,
-                output_dim,
-                kernel_size,
-                stride=stride,
-                padding=self.padding,
-                bias=bias,
-            )
+        self.padding = int((kernel_size - 1) / 2)
+        self.conv = nn.Conv2d(
+            input_dim,
+            output_dim,
+            kernel_size,
+            stride=stride,
+            padding=self.padding,
+            bias=bias,
+        )
 
     def forward(self, input):
         output = self.conv(input)

@@ -3,12 +3,13 @@ import numpy as np
 from torch import optim
 import torch.nn.init as init
 from torch import nn
+from torch._six import inf
 from Utils.flags import FLAGS
 
 
 # Function for Initialization
 def weight_init(m):
-    if hasattr(m, 'reset_parameters'):
+    if hasattr(m, "reset_parameters"):
         m.reset_parameters()
 
 
@@ -24,8 +25,8 @@ def update_average(model_tgt, model_src, beta=0.999):
 
     for p_name, p_tgt in model_tgt.named_parameters():
         p_src = param_dict_src[p_name]
-        assert (p_src is not p_tgt)
-        p_tgt.copy_(beta * p_tgt + (1. - beta) * p_src)
+        assert p_src is not p_tgt
+        p_tgt.copy_(beta * p_tgt + (1.0 - beta) * p_src)
 
 
 def get_nsamples(data_loader, N):
@@ -52,10 +53,37 @@ def build_optimizers(parameters, optimizer, lr, prefix=None):
             if k.find(prefix) == 0:
                 kwargs[k[length:]] = args[k]
     # Optimizers
-    if optimizer == 'rmsprop':
+    if optimizer == "rmsprop":
         opt = optim.RMSprop(parameters, lr=lr, **kwargs)
-    elif optimizer == 'adam':
+    elif optimizer == "adam":
         opt = optim.Adam(parameters, lr=lr, **kwargs)
-    elif optimizer == 'sgd':
+    elif optimizer == "sgd":
         opt = optim.SGD(parameters, lr=lr, **kwargs)
     return opt
+
+
+def clip_grad_norm_(parameters, max_norm, clip_value=1000, norm_type=2):
+    if isinstance(parameters, torch.Tensor):
+        parameters = [parameters]
+    parameters = list(filter(lambda p: p.grad is not None, parameters))
+    max_norm = float(max_norm)
+    norm_type = float(norm_type)
+
+    clip_value = float(clip_value)
+    for p in filter(lambda p: p.grad is not None, parameters):
+        p.grad.data[torch.isnan(p.grad.data)] = 0
+        p.grad.data[torch.isinf(p.grad.data)] = 0
+        p.grad.data.clamp_(min=-clip_value, max=clip_value)
+
+    if norm_type == inf:
+        total_norm = max(p.grad.detach().abs().mean() for p in parameters)
+    else:
+        total_norm = torch.norm(
+            torch.stack([torch.norm(p.grad.detach(), norm_type) for p in parameters]),
+            norm_type,
+        )
+    clip_coef = max_norm / (total_norm + 1e-6)
+    if clip_coef < 1:
+        for p in parameters:
+            p.grad.detach().mul_(clip_coef)
+    return total_norm

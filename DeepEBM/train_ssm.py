@@ -56,13 +56,13 @@ elif FLAGS.noise_distribution == "lin":
 
 sigmas = torch.Tensor(sigmas_np).view(-1, 1).to(device)
 time_dur = 0.0
-
-
+netE.train()
 for i in range(FLAGS.net_indx, FLAGS.net_indx + FLAGS.n_iter):
     x_real = itr.__next__().to(device)
     x_real = x_real + torch.randn_like(x_real) * FLAGS.ssm_eps
     start_time = time.time()
     tloss = loss_func(netE, x_real)
+    optimizerE.zero_grad()
     tloss.backward()
     torch.nn.utils.clip_grad_norm_(netE.parameters(), FLAGS.clip_value)
     optimizerE.step()
@@ -73,9 +73,9 @@ for i in range(FLAGS.net_indx, FLAGS.net_indx + FLAGS.n_iter):
         netE.eval()
         E_real = netE(x_real).mean()
         E_noise = netE(torch.rand_like(x_real)).mean()
+        ntloss = loss_eval(netE, x_real)
         netE.train()
 
-        ntloss = loss_eval(netE, x_real)
         str_meg = "Iteration {}/{} ({:.0f}%), E_real {:e},"
         str_meg += " E_noise {:e}, tLoss {:e}, Normalized Loss {:e}, time {:4.3f}"
         text_logger.info(
@@ -95,6 +95,10 @@ for i in range(FLAGS.net_indx, FLAGS.net_indx + FLAGS.n_iter):
         logger.add("training", "E_real", E_real.item(), i + 1)
         logger.add("training", "E_noise", E_noise.item(), i + 1)
         logger.add("training", "loss", tloss.item(), i + 1)
+        del E_real
+        del E_noise
+        del ntloss
+        del tloss
 
     if (i + 1) % FLAGS.save_every == 0:
         text_logger.info("-" * 50)

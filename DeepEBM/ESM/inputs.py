@@ -82,7 +82,6 @@ def get_optimizer_scheduler(model):
 
     if FLAGS.lr_schedule == "exp":
         scheduler = torch.optim.lr_scheduler.StepLR(optimizer, int(FLAGS.n_iter / 6))
-
     elif FLAGS.lr_schedule == "cosine":
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
             optimizer, FLAGS.n_iter, eta_min=FLAGS.min_lr, last_epoch=-1
