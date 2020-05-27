@@ -1,4 +1,4 @@
-The following are the commands to reproduce our quantitative results in this paper. 
+The following are the commands to reproduce our quantitative results in this paper. Our code is largely based on [the original code of NCSN](https://github.com/ermongroup/ncsn).
 
 ## NCSN 
 The running commands for NCSN are as follows:
