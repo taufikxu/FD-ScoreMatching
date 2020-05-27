@@ -62,18 +62,18 @@ def build_optimizers(parameters, optimizer, lr, prefix=None):
     return opt
 
 
-def clip_grad_norm_(parameters, max_norm, clip_value=1000, norm_type=2):
+def clip_grad_norm_(parameters, max_norm, norm_type=2):
     if isinstance(parameters, torch.Tensor):
         parameters = [parameters]
     parameters = list(filter(lambda p: p.grad is not None, parameters))
     max_norm = float(max_norm)
     norm_type = float(norm_type)
 
-    clip_value = float(clip_value)
+    # clip_value = float(clip_value)
     for p in filter(lambda p: p.grad is not None, parameters):
         p.grad.data[torch.isnan(p.grad.data)] = 0
         p.grad.data[torch.isinf(p.grad.data)] = 0
-        p.grad.data.clamp_(min=-clip_value, max=clip_value)
+        # p.grad.data.clamp_(min=-clip_value, max=clip_value)
 
     if norm_type == inf:
         total_norm = max(p.grad.detach().abs().mean() for p in parameters)

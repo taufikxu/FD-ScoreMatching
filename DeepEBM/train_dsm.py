@@ -62,7 +62,7 @@ for i in range(FLAGS.net_indx, FLAGS.net_indx + FLAGS.n_iter):
     tloss = loss_func(netE, x_real, sigmas, sigma02)
     optimizerE.zero_grad()
     tloss.backward()
-    grad_norm = Torture.clip_grad_norm_(netE.parameters(), FLAGS.clip_value)
+    grad_norm = torch.nn.utils.clip_grad_norm_(netE.parameters(), FLAGS.clip_value)
     optimizerE.step()
     time_dur += time.time() - start_time
     scheduler.step()

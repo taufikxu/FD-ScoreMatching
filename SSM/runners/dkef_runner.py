@@ -227,9 +227,7 @@ class DKEFRunner:
                 elif train_mode == "sliced":
                     train_loss, _, _ = single_sliced_score_matching(energy_net, X_v)
                 elif train_mode == "sliced_fd":
-                    train_loss, _, _ = efficient_score_matching_conjugate(
-                        energy_net, X_v
-                    )
+                    train_loss = efficient_score_matching_conjugate(energy_net, X_v)
                 elif train_mode == "sliced_VR":
                     train_loss, _, _ = sliced_VR_score_matching(energy_net, X_v)
                 elif train_mode == "dsm":
@@ -280,7 +278,7 @@ class DKEFRunner:
                             energy_net_val, data_v, detach=True
                         )
                     elif train_mode == "sliced_fd":
-                        batch_val_loss, _, _ = efficient_score_matching_conjugate(
+                        batch_val_loss = efficient_score_matching_conjugate(
                             energy_net_val, data_v, detach=True
                         )
                     elif train_mode == "sliced_VR":
@@ -442,9 +440,7 @@ class DKEFRunner:
                 elif train_mode == "sliced":
                     val_loss, _, _ = single_sliced_score_matching(energy_net, val_batch)
                 elif train_mode == "sliced_fd":
-                    val_loss, _, _ = efficient_score_matching_conjugate(
-                        energy_net, val_batch
-                    )
+                    val_loss = efficient_score_matching_conjugate(energy_net, val_batch)
                 elif train_mode == "sliced_VR":
                     val_loss, _, _ = sliced_VR_score_matching(energy_net, val_batch)
                 elif train_mode == "dsm":

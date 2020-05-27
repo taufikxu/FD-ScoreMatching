@@ -94,3 +94,48 @@ def dsm(energy_net, samples, sigma=1):
     loss = loss.mean() / 2.0
 
     return loss
+
+
+def dsm_tracetrick(energy_net, samples, sigma=1):
+    samples.requires_grad_(True)
+    vector = torch.randn_like(samples) * sigma
+    perturbed_inputs = samples + vector
+
+    m = torch.distributions.one_hot_categorical.OneHotCategorical(
+        probs=torch.ones_like(samples)
+    )
+    trace_v = m.sample() * np.sqrt(samples.shape[-1])
+    # trace_v = torch.randn_like(samples)
+    # trace_v = trace_v / torch.norm(trace_v, dim=-1, keepdim=True) * np.sqrt(trace_v.shape[-1])
+
+    logp = -energy_net(perturbed_inputs)
+    dlogp = (
+        sigma ** 2 * autograd.grad(logp.sum(), perturbed_inputs, create_graph=True)[0]
+    )
+    kernel = vector
+    loss = torch.sum((dlogp + kernel) * trace_v, dim=-1) ** 2
+    loss = loss.mean() / 2.0
+
+    return loss
+
+
+def dsm_tracetrick_FD(energy_net, samples, sigma=1, eps=0.1):
+    samples.requires_grad_(True)
+    vector = torch.randn_like(samples) * sigma
+    perturbed_inputs = samples + vector
+
+    trace_v = torch.randn_like(samples)
+    trace_v = trace_v / torch.norm(trace_v, dim=-1, keepdim=True) * eps
+
+    batch_size = samples.shape[0]
+    cat_input = torch.cat([samples + trace_v, samples - trace_v], 0)
+    cat_output = -energy_net(cat_input)
+    out_1 = cat_output[:batch_size]
+    out_2 = cat_output[batch_size:]
+
+    dlogp = sigma ** 2 * (out_1 - out_2)
+    kernel = 2 * torch.sum(vector * trace_v, dim=-1)
+    loss = (dlogp + kernel) ** 2
+    loss = loss.mean() * trace_v.shape[-1] / (8 * eps * eps)
+
+    return loss

@@ -3,7 +3,8 @@ import logging
 import shutil
 import tensorboardX
 from losses.sliced_sm import *
-from losses.dsm import dsm, select_sigma
+from losses.efficient_sm import *
+from losses.dsm import dsm, select_sigma, dsm_tracetrick, dsm_tracetrick_FD
 import torch.optim as optim
 from torchvision.utils import make_grid
 from torchvision.datasets import MNIST, CIFAR10
@@ -14,6 +15,7 @@ from losses.score_matching import exact_score_matching
 import numpy as np
 import pickle
 import copy
+import time
 
 __all__ = ['NICERunner']
 
@@ -50,7 +52,8 @@ class NICERunner():
         self.results[model_type] = {}
 
         for i, (X, y) in enumerate(val_loader):
-            X = X + (torch.rand_like(X) - 0.5) / 256.
+            noises = torch.zeros_like(X)
+            X = X + (noises.uniform_(0,1) - 0.5) / 256.
             flattened_X = X.type(torch.float32).to(self.config.device).view(X.shape[0], -1)
             flattened_X.clamp_(1e-3, 1-1e-3)
             flattened_X, _ = Logit()(flattened_X, mode='direct')
@@ -74,7 +77,8 @@ class NICERunner():
         test_sm_losses = []
 
         for i, (X, y) in enumerate(test_loader):
-            X = X + (torch.rand_like(X) - 0.5) / 256.
+            noises = torch.zeros_like(X)
+            X = X + (noises.uniform_(0,1) - 0.5) / 256.
             flattened_X = X.type(torch.float32).to(self.config.device).view(X.shape[0], -1)
             flattened_X.clamp_(1e-3, 1-1e-3)
             flattened_X, _ = Logit()(flattened_X, mode='direct')
@@ -91,6 +95,7 @@ class NICERunner():
         test_sm_loss = sum(test_sm_losses) / len(test_sm_losses)
         self.results[model_type]['test_logp'] = np.asscalar(test_logp.detach().cpu().numpy())
         self.results[model_type]['test_sm_loss'] = np.asscalar(test_sm_loss.detach().cpu().numpy())
+        logging.info("Test logp: {}, score matching loss: {}".format(test_logp.item(), test_sm_loss.item()))
 
     def train(self):
         transform = transforms.Compose([
@@ -103,13 +108,22 @@ class NICERunner():
                               transform=transform)
             test_dataset = CIFAR10(os.path.join(self.args.run, 'datasets', 'cifar10'), train=False, download=True,
                                    transform=transform)
+            num_items = len(dataset)
+            indices = list(range(num_items))
+            random_state = np.random.get_state()
+            np.random.seed(2020)
+            np.random.shuffle(indices)
+            np.random.set_state(random_state)
+            train_indices, val_indices = indices[:int(num_items * 0.9)], indices[int(num_items * 0.9):]
+            val_dataset = Subset(dataset, val_indices)
+            dataset = Subset(dataset, train_indices)
         elif self.config.data.dataset == 'MNIST':
             dataset = MNIST(os.path.join(self.args.run, 'datasets', 'mnist'), train=True, download=True,
                             transform=transform)
             num_items = len(dataset)
             indices = list(range(num_items))
             random_state = np.random.get_state()
-            np.random.seed(2019)
+            np.random.seed(2020)
             np.random.shuffle(indices)
             np.random.set_state(random_state)
             train_indices, val_indices = indices[:int(num_items * 0.9)], indices[int(num_items * 0.9):]
@@ -135,6 +149,12 @@ class NICERunner():
             shutil.rmtree(model_path)
         os.makedirs(model_path)
 
+        ## save txt files
+        txtfiles = os.path.join('txtresults', self.args.doc)
+        if not os.path.exists(txtfiles):
+            os.makedirs(txtfiles) 
+        
+
         tb_logger = tensorboardX.SummaryWriter(log_dir=tb_path)
 
         flow = NICE(self.config.input_dim, self.config.model.hidden_size, self.config.model.num_layers).to(
@@ -144,7 +164,7 @@ class NICERunner():
 
         # Set up test data
         noise_sigma = self.config.data.noise_sigma
-        step = 0
+        step = 1
 
         def energy_net(inputs):
             energy, _ = flow(inputs, inv=False)
@@ -173,8 +193,8 @@ class NICERunner():
             return samples
 
         # Use this to select the sigma for DSM losses
-        if self.config.training.algo == 'dsm':
-            sigma = self.args.dsm_sigma
+        # if self.config.training.algo == 'dsm':
+        #     sigma = self.args.dsm_sigma
             # if noise_sigma is None:
             #     sigma = select_sigma(iter(dataloader), iter(val_loader))
             # else:
@@ -187,9 +207,14 @@ class NICERunner():
         best_val_loss = {"val": 1e+10, "ll": -1e+10, "esm": 1e+10}
         best_val_iter = {"val": 0, "ll": 0, "esm": 0}
 
+        time_record = []
+        time_culm_record = []
+        val_logp_record = []
+        val_sm_record = []
         for _ in range(self.config.training.n_epochs):
             for _, (X, y) in enumerate(dataloader):
-                X = X + (torch.rand_like(X) - 0.5) / 256.
+                noises = torch.zeros_like(X)
+                X = X + (noises.uniform_(0,1) - 0.5) / 256.
                 flattened_X = X.type(torch.float32).to(self.config.device).view(X.shape[0], -1)
                 flattened_X.clamp_(1e-3, 1-1e-3)
                 flattened_X, _ = Logit()(flattened_X, mode='direct')
@@ -199,40 +224,69 @@ class NICERunner():
 
                 flattened_X.requires_grad_(True)
 
+                
+
                 logp = -energy_net(flattened_X)
-
                 logp = logp.mean()
-
+                
                 if self.config.training.algo == 'kingma':
+                    t = time.time()
                     loss = approx_backprop_score_matching(grad_net_kingma, flattened_X)
                 if self.config.training.algo == 'UT':
+                    t = time.time()
                     loss = approx_backprop_score_matching(grad_net_UT, flattened_X)
                 if self.config.training.algo == 'S':
+                    t = time.time()
                     loss = approx_backprop_score_matching(grad_net_S, flattened_X)
                 elif self.config.training.algo == 'mle':
-                    loss = -logp
+                    t = time.time()
+                    loss = energy_net(flattened_X)
+                    loss = loss.mean()
                 elif self.config.training.algo == 'ssm':
+                    t = time.time()
                     loss, *_ = single_sliced_score_matching(energy_net, flattened_X, noise_type=self.config.training.noise_type)
                 elif self.config.training.algo == 'ssm_vr':
+                    t = time.time()
                     loss, *_ = sliced_VR_score_matching(energy_net, flattened_X, noise_type=self.config.training.noise_type)
                 elif self.config.training.algo == 'dsm':
-                    loss = dsm(energy_net, flattened_X, sigma=sigma)
+                    t = time.time()
+                    loss = dsm(energy_net, flattened_X, sigma=self.args.dsm_sigma)
+                elif self.config.training.algo == 'dsm_tracetrick':
+                    t = time.time()
+                    loss = dsm_tracetrick(energy_net, flattened_X, sigma=self.args.dsm_sigma)
+                elif self.config.training.algo == 'dsm_tracetrick_FD':
+                    t = time.time()
+                    loss = dsm_tracetrick_FD(energy_net, flattened_X, sigma=self.args.dsm_sigma)
                 elif self.config.training.algo == "exact":
+                    t = time.time()
                     loss = exact_score_matching(energy_net, flattened_X, train=True).mean()
-
+                elif self.config.training.algo == 'efficient_sm':
+                    t = time.time()
+                    loss = single_efficient_score_matching(energy_net, flattened_X, eps=self.args.ESM_eps, noise_type=self.config.training.noise_type)
+                elif self.config.training.algo == 'efficient_sm_conjugate':
+                    t = time.time()
+                    loss = efficient_score_matching_conjugate(energy_net, flattened_X, eps=self.args.ESM_eps, noise_type=self.config.training.noise_type)
+                elif self.config.training.algo == 'MLE_efficient_sm_conjugate':
+                    t = time.time()
+                    loss = MLE_efficient_score_matching_conjugate(energy_net, flattened_X, eps=self.args.ESM_eps, mle_ratio=self.args.MLE_ratio, noise_type=self.config.training.noise_type)
+            
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
+                t = time.time() - t
+                time_record.append(t)
 
 
-                if step % 10 == 0:
+
+
+                if step % 100 == 0:
                     try:
                         val_X, _ = next(val_iter)
                     except:
                         val_iter = iter(val_loader)
                         val_X, _ = next(val_iter)
-
-                    val_X = val_X + (torch.rand_like(val_X) - 0.5) / 256.
+                    noises = torch.zeros_like(val_X)
+                    val_X = val_X + (noises.uniform_(0,1)- 0.5) / 256.
                     val_X = val_X.type(torch.float32).to(self.config.device)
                     val_X.clamp_(1e-3, 1-1e-3)
                     val_X, _ = Logit()(val_X, mode='direct')
@@ -240,7 +294,8 @@ class NICERunner():
                     if noise_sigma is not None:
                         val_X += torch.randn_like(val_X) * noise_sigma
 
-                    val_logp = -energy_net(val_X).mean()
+                    val_logp = -energy_net(val_X)
+                    val_logp = val_logp.mean()
                     if self.config.training.algo == 'kingma':
                         val_loss = approx_backprop_score_matching(grad_net_kingma, val_X)
                     if self.config.training.algo == 'UT':
@@ -252,20 +307,41 @@ class NICERunner():
                     elif self.config.training.algo == 'ssm_vr':
                         val_loss, *_ = sliced_VR_score_matching(energy_net, val_X, noise_type=self.config.training.noise_type)
                     elif self.config.training.algo == 'dsm':
-                        val_loss = dsm(energy_net, val_X, sigma=sigma)
+                        val_loss = dsm(energy_net, val_X, sigma=self.args.dsm_sigma)
+                    elif self.config.training.algo == 'dsm_tracetrick':
+                        val_loss = dsm_tracetrick(energy_net, val_X, sigma=self.args.dsm_sigma)
+                    elif self.config.training.algo == 'dsm_tracetrick_FD':
+                        val_loss = dsm_tracetrick_FD(energy_net, val_X, sigma=self.args.dsm_sigma)
                     elif self.config.training.algo == 'mle':
                         val_loss = -val_logp
                     elif self.config.training.algo == "exact":
                         val_loss = exact_score_matching(energy_net, val_X, train=False).mean()
+                    elif self.config.training.algo == 'efficient_sm':
+                        val_loss = single_efficient_score_matching(energy_net, val_X, eps=self.args.ESM_eps)
+                    elif self.config.training.algo == 'efficient_sm_conjugate':
+                        val_loss = efficient_score_matching_conjugate(energy_net, val_X, eps=self.args.ESM_eps)
+                    elif self.config.training.algo == 'MLE_efficient_sm_conjugate':
+                        val_loss = MLE_efficient_score_matching_conjugate(energy_net, val_X, eps=self.args.ESM_eps, mle_ratio=self.args.MLE_ratio)
 
-                    logging.info("logp: {:.3f}, val_logp: {:.3f}, loss: {:.3f}, val_loss: {:.3f}".format(logp.item(),
+                    logging.info("logp: {:.3f}, val_logp: {:.3f}, loss: {:.3f}, val_loss: {:.3f}, time per step: {:.3f} +- {:.3f} ms".format(logp.item(),
                                                                                            val_logp.item(),
                                                                                            loss.item(),
-                                                                                           val_loss.item()))
+                                                                                           val_loss.item(),
+                                                                                           np.mean(time_record) * 1e3, 
+                                                                                           np.std(time_record) * 1e3)
+                                                                                            )
                     tb_logger.add_scalar('logp', logp, global_step=step)
                     tb_logger.add_scalar('loss', loss, global_step=step)
                     tb_logger.add_scalar('val_logp', val_logp, global_step=step)
                     tb_logger.add_scalar('val_loss', val_loss, global_step=step)
+
+                    # save records in txt
+                    val_logp_record.append(val_logp.item())
+                    time_culm = sum(time_record)
+                    time_culm_record.append(time_culm)
+                    np.savetxt(txtfiles+'/val_logp_record.txt', np.array(val_logp_record))
+                    np.savetxt(txtfiles+'/time_culm_record.txt', np.array(time_culm_record))
+
 
                     if val_loss < best_val_loss['val']:
                         best_val_loss['val'] = val_loss
@@ -296,7 +372,8 @@ class NICERunner():
                         val_iter = iter(val_loader)
                         val_X, _ = next(val_iter)
 
-                    val_X = val_X + (torch.rand_like(val_X) - 0.5) / 256.
+                    noises = torch.zeros_like(val_X)
+                    val_X = val_X + (noises.uniform_(0,1) - 0.5) / 256.
                     val_X = val_X.type(torch.float32).to(self.config.device)
                     val_X.clamp_(1e-3, 1-1e-3)
                     val_X, _ = Logit()(val_X, mode='direct')
@@ -313,10 +390,16 @@ class NICERunner():
                     logging.info('step: {}, exact score matching loss: {}'.format(step, sm_loss.item()))
                     tb_logger.add_scalar('exact_score_matching_loss', sm_loss, global_step=step)
 
+                    # save records in txt
+                    val_sm_record.append(sm_loss.item())
+                    np.savetxt(txtfiles+'/val_smloss_record.txt', np.array(val_sm_record))
+
                 if step % 500 == 0:
                     torch.save(flow.state_dict(), os.path.join(model_path, 'nice.pth'))
 
                 step += 1
+
+        
 
         self.results = {}
         self.evaluate_model(flow.state_dict(), "final", val_loader, test_loader, model_path)

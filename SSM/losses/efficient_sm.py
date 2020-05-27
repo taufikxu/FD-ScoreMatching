@@ -4,6 +4,26 @@ import torch
 # import numpy as np
 
 
+def single_efficient_score_matching(energy_net, samples, eps=0.01, noise_type="sphere"):
+    samples.requires_grad_(True)
+    vectors = torch.randn_like(samples)
+    if noise_type == "radermacher":
+        vectors = vectors.sign() * eps
+    elif noise_type == "sphere":
+        vectors = vectors / torch.norm(vectors, dim=-1, keepdim=True) * eps
+
+    batch_size = samples.shape[0]
+    cat_input = torch.cat([samples, samples + vectors], 0)
+    cat_output = energy_net(cat_input)
+    out_1 = cat_output[:batch_size]
+    out_2 = cat_output[batch_size:]
+
+    diffs = out_1 - out_2
+    loss = torch.sum(torch.mul(diffs, diffs) + 4 * diffs)
+
+    return loss
+
+
 def dsm_fd(energy_net, samples, sigma=1, eps=0.001):
     batchSize, dim = samples.shape[0], samples.shape[1]
     samples.requires_grad_(True)
@@ -50,7 +70,7 @@ def efficient_score_matching_conjugate(
         loss2 = loss2.detach()
     loss = (loss1 + loss2).mean() / (eps ** 2) * dim
 
-    return loss, loss1, loss2
+    return loss
 
 
 def esm_scorenet_VR(scorenet, samples, eps=0.1):
@@ -74,5 +94,30 @@ def esm_scorenet_VR(scorenet, samples, eps=0.1):
     loss_1 = torch.sum((grad1 * grad1) / 8.0, dim=-1)
     loss_2 = torch.sum(grad2 * vectors * (dim / (2 * eps * eps)), dim=-1)
     loss = (loss_1 + loss_2).mean(dim=0)
+
+    return loss
+
+
+def MLE_efficient_score_matching_conjugate(
+    energy_net, samples, eps=0.01, mle_ratio=10, noise_type="sphere"
+):
+    samples.requires_grad_(True)
+    vectors = torch.randn_like(samples)
+    if noise_type == "radermacher":
+        vectors = vectors.sign() * eps
+    elif noise_type == "sphere":
+        vectors = vectors / torch.norm(vectors, dim=-1, keepdim=True) * eps
+
+    batch_size = samples.shape[0]
+    cat_input = torch.cat([samples, samples + vectors, samples - vectors], 0)
+    cat_output = energy_net(cat_input)
+    out_1 = cat_output[:batch_size]
+    out_2 = cat_output[batch_size : 2 * batch_size]
+    out_3 = cat_output[2 * batch_size :]
+
+    diffs_1 = out_2 - out_3
+    loss = torch.sum(
+        (torch.mul(diffs_1, diffs_1) / 8) - out_2 - out_3 + mle_ratio * out_1
+    )
 
     return loss
