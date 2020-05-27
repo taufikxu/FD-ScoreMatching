@@ -18,9 +18,6 @@ python main.py --runner VAERunner --config vae/celeba_ssm.yml --doc vae_celeba_s
 python main.py --runner VAERunner --config vae/celeba_ssm_fd.yml --doc vae_celeba_ssm_fd --test
 
 
-python main.py --runner NICERunner --config nice/nice_efficient_sm_conjugate.yml --ESM_eps 0.1 --doc nice_mnist_esm
-python main.py --runner NICERunner --config nice/nice_ssm.yml --ESM_eps 0.1 --doc nice_mnist_ssm
-python main.py --runner NICERunner --config nice/nice_ssm_vr.yml --ESM_eps 0.1 --doc nice_mnist_ssm_vr
 
 python main.py --runner WAERunner --config wae/mnist_ssm.yml --doc wae_mnist_ssm --test
 python main.py --runner WAERunner --config wae/mnist_ssm_fd.yml --doc wae_mnist_ssm_fd --test
