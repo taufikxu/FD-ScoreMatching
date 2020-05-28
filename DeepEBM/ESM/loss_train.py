@@ -35,7 +35,8 @@ def mdsm_baseline(energy, x_real, sigmas, sigma02, dim, mean=True):
     grad_x = torch.autograd.grad(E.sum(), x_noisy, create_graph=True)[0]
 
     LS_loss = torch.sum(((x_real - x_noisy) / sigma02 + grad_x) ** 2, dim=-1)
-    LS_loss = LS_loss / (sigmas.view(-1) ** 2)
+    coe = FLAGS.loss_coe / (sigmas.view(-1) ** 2)
+    LS_loss = LS_loss * coe
 
     if mean is True:
         return LS_loss.mean()
@@ -54,8 +55,8 @@ def mdsm_tracetrick(energy, x_real, sigmas, sigma02, dim, mean=True):
 
     LS_loss = torch.sum(((x_real - x_noisy) / sigma02 + grad_x) * projection, dim=-1)
     LS_loss = LS_loss ** 2
-    # print(LS_loss.shape)
-    LS_loss = LS_loss / (sigmas.view(-1) ** 2)
+    coe = FLAGS.loss_coe / (sigmas.view(-1) ** 2)
+    LS_loss = LS_loss * coe
     if mean is True:
         return LS_loss.mean()
     else:
@@ -110,7 +111,8 @@ def mdsm_fd(energy, x_real, sigmas, sigma02, dim):
     first_term = (logp1 - logp2) * 0.5
     second_term = torch.sum(v * (x_noisy - x_real), dim=-1) / sigma02
     LS_loss_e = (first_term + second_term) ** 2 / (sigmas.view(-1) ** 2)
-    LS_loss_e = LS_loss_e / esm_eps ** 2 * dim
+    coe = FLAGS.loss_coe / esm_eps ** 2 * dim
+    LS_loss_e = LS_loss_e * coe
     # print(LS_loss_e.shape)
     LS_loss = (LS_loss_e).mean()
     return LS_loss
@@ -148,6 +150,7 @@ def mdsm_fd(energy, x_real, sigmas, sigma02, dim):
 
 def mdsm_fd_nop(energy, x_real, sigmas, sigma02, dim):
     batchSize = FLAGS.batch_size
+    esm_eps = FLAGS.esm_eps
     x_real = x_real.view(batchSize, dim)
     dsm_noise = sigmas * torch.randn_like(x_real)
     x_noisy = x_real + dsm_noise
@@ -162,7 +165,8 @@ def mdsm_fd_nop(energy, x_real, sigmas, sigma02, dim):
     second_term = torch.sum(v * (x_noisy - x_real), dim=-1) / sigma02
     sigmas_weight = sigmas.view(-1) ** 2
     LS_loss_e = (first_term + second_term) ** 2 / sigmas_weight
-    LS_loss = LS_loss_e.mean() / FLAGS.esm_eps ** 2 * dim
+    coe = FLAGS.loss_coe / esm_eps ** 2 * dim
+    LS_loss = LS_loss_e.mean() * coe
     return LS_loss
 
 

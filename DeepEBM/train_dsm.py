@@ -56,9 +56,12 @@ sigmas = torch.Tensor(sigmas_np).view(-1, 1).to(device)
 time_dur = 0.0
 netE.train()
 for i in range(FLAGS.net_indx, FLAGS.net_indx + FLAGS.n_iter):
+    
     x_real = itr.__next__().to(device)
     start_time = time.time()
     tloss = loss_func(netE, x_real, sigmas, sigma02)
+    if tloss.item() > 3e4:
+        continue
     optimizerE.zero_grad()
     tloss.backward()
     # grad_norm = torch.nn.utils.clip_grad_norm_(netE.parameters(), FLAGS.clip_value)
@@ -66,6 +69,7 @@ for i in range(FLAGS.net_indx, FLAGS.net_indx + FLAGS.n_iter):
     optimizerE.step()
     time_dur += time.time() - start_time
     scheduler.step()
+
 
     if (i + 1) % print_interval == 0:
         netE.eval()

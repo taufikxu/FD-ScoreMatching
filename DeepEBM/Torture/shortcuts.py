@@ -70,10 +70,10 @@ def clip_grad_norm_(parameters, max_norm, norm_type=2):
     norm_type = float(norm_type)
 
     # clip_value = float(clip_value)
-    for p in filter(lambda p: p.grad is not None, parameters):
-        p.grad.data[torch.isnan(p.grad.data)] = 0
-        p.grad.data[torch.isinf(p.grad.data)] = 0
-        # p.grad.data.clamp_(min=-clip_value, max=clip_value)
+    # for p in filter(lambda p: p.grad is not None, parameters):
+    #     p.grad.data[torch.isnan(p.grad.data)] = 0
+    #     p.grad.data[torch.isinf(p.grad.data)] = 0
+    #     p.grad.data.clamp_(min=-clip_value, max=clip_value)
 
     if norm_type == inf:
         total_norm = max(p.grad.detach().abs().mean() for p in parameters)
