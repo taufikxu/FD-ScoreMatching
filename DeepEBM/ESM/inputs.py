@@ -28,13 +28,14 @@ model_dict = {
     "cifar_resnet18_dense": models.Res18_Quadratic_dense,
     "cifar_resnet18_unet": models.Res18_Quadratic_unet,
     "imagenet_resnet34": models.Res34_Quadratic_Imagenet,
+    "imagenet_resnet18": models.Res18_Quadratic,
 }
 hw_dict = {
     "cifar": (32, 3),
     "svhn": (32, 3),
     "mnist": (32, 1),
     "fashionmnist": (32, 1),
-    "imagenet": (224, 3),
+    "imagenet": (128, 3),
     "celeba": (64, 3),
     "celeba32": (32, 3),
 }

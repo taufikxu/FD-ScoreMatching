@@ -9,7 +9,7 @@ def inf_train_gen_imagenet(batch_size, flip=True, train=True, infinity=True):
     if flip:
         transf = transforms.Compose(
             [
-                transforms.CenterCrop(224),
+                transforms.CenterCrop(128),
                 transforms.RandomHorizontalFlip(p=0.5),
                 transforms.ToTensor(),
                 # transforms.Normalize((.5, .5, .5), (.5, .5, .5))
