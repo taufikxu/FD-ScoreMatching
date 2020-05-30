@@ -17,6 +17,11 @@ def inf_train_gen_imagenet(batch_size, flip=True, train=True, infinity=True):
         )
     else:
         transf = transforms.ToTensor()
+    
+    if train is True:
+        split = "train"
+    else:
+        split = "val"
 
     loader = torch.utils.data.DataLoader(
         datasets.ImageNet("/home/LargeData/ImageNet/", split="train", transform=transf),
