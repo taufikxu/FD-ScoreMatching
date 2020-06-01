@@ -11,7 +11,7 @@ def get_logger(logger_name=None):
         logger = logging.getLogger(logger_name)
         logger.propagate = 0
     else:
-        logger = logging.getLogger("taufikxu")
+        logger = logging.getLogger("FDSM")
     return logger
 
 
