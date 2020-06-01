@@ -62,7 +62,7 @@ for i in range(FLAGS.net_indx, FLAGS.net_indx + FLAGS.n_iter):
     # print(x_real.shape)
     start_time = time.time()
     tloss = loss_func(netE, x_real, sigmas, sigma02)
-    if i > 100 and tloss.item() > 1e4:
+    if i > 100 and tloss.item() > 1e8:
         print("skip")
         continue
     optimizerE.zero_grad()
