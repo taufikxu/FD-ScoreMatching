@@ -1,0 +1,28 @@
+generator:
+  name: cifar10_resnet
+  kwargs:
+    z_dim: 256
+    nlabels: 1
+    size: 32
+    embed_size: 256
+    nfilter: 64
+    nfilter_max: 512
+  optim:
+    opt_name: adam
+    lr: 0.0001
+    beta1: 0.0
+    beta2: 0.99
+discriminator:
+  name: cifar10_resnet
+  kwargs:
+    z_dim: 256
+    nlabels: 1
+    size: 32
+    embed_size: 256
+    nfilter: 64
+    nfilter_max: 512
+  optim:
+    opt_name: adam
+    lr: 0.0001
+    beta1: 0.0
+    beta2: 0.99

@@ -1,0 +1,27 @@
+dataset: cifar10
+include_model: ./configs/models/cifar10_resnet.yaml
+
+z_dist:
+  dtype: gauss
+  dim: 256
+y_dist:
+  dtype: cat
+  dim: 1
+
+trainer:
+  name: fd
+  kwargs:
+    gan_type: standard
+    reg_type: real
+    reg_param: 10.
+
+training:
+  n_iter: 500000
+  batch_size: 64
+  d_steps: 1
+  model_average_beta: 0.999
+  fd_eps: 0.1
+
+  sample_every: 1000
+  inception_every: 10000
+  backup_every: 100000
