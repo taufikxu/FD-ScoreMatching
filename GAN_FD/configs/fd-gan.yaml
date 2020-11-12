@@ -1,4 +1,5 @@
 dataset: cifar10
+gpu_number: 1
 include_model: ./configs/models/cifar10_resnet.yaml
 
 z_dist:

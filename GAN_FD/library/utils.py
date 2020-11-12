@@ -45,20 +45,13 @@ def update_average(model_tgt, model_src, beta=0.999):
 
 class Evaluator(object):
     def __init__(
-        self,
-        generator,
-        zdist,
-        ydist,
-        batch_size=64,
-        inception_nsamples=50000,
-        device=None,
+        self, generator, zdist, ydist, batch_size=64, inception_nsamples=50000,
     ):
         self.generator = generator
         self.zdist = zdist
         self.ydist = ydist
         self.inception_nsamples = inception_nsamples
         self.batch_size = batch_size
-        self.device = device
 
     def compute_inception_score(self):
         self.generator.eval()
@@ -72,9 +65,7 @@ class Evaluator(object):
             imgs.extend(samples)
 
         imgs = imgs[: self.inception_nsamples]
-        score, score_std = inception_score.inception_score(
-            imgs, device=self.device, resize=True, splits=10
-        )
+        score, score_std = inception_score.inception_score(imgs, resize=True, splits=10)
 
         return score, score_std
 

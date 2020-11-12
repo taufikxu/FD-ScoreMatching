@@ -61,12 +61,12 @@ class Trainer(object):
                 batch_size, 1, 1, 1
             )
             noise = noise / l2norm * FLAGS.training.fd_eps * np.sqrt(input_shape)
-            cat_input = torch.cat([x_real + noise, x_real - noise], 0)
+            cat_input = torch.cat([x_real, x_real - noise], 0)
             cat_y = torch.cat([y, y], 0)
             cat_d_real = self.discriminator(cat_input, cat_y)
             d_real1 = cat_d_real[:batch_size]
             d_real2 = cat_d_real[batch_size:]
-            d_real = (d_real1 + d_real2) * 0.5
+            d_real = d_real1
 
             dloss_real = self.compute_loss(d_real, 1)
             reg = (((d_real1 - d_real2) / FLAGS.training.fd_eps) ** 2).mean()
@@ -88,12 +88,12 @@ class Trainer(object):
                 batch_size, 1, 1, 1
             )
             noise = noise / l2norm * FLAGS.training.fd_eps * np.sqrt(input_shape)
-            cat_input = torch.cat([x_fake + noise, x_fake - noise], 0)
+            cat_input = torch.cat([x_fake, x_fake - noise], 0)
             cat_y = torch.cat([y, y], 0)
             cat_d_fake = self.discriminator(cat_input, cat_y)
             d_fake1 = cat_d_fake[:batch_size]
             d_fake2 = cat_d_fake[batch_size:]
-            d_fake = (d_fake1 + d_fake2) * 0.5
+            d_fake = d_fake1
 
             dloss_fake = self.compute_loss(d_fake, 0)
             reg = (((d_fake1 - d_fake2) / FLAGS.training.fd_eps) ** 2).mean()

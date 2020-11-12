@@ -7,9 +7,10 @@ from torchvision.models.inception import inception_v3
 
 import numpy as np
 from scipy.stats import entropy
+from Tools import FLAGS
 
 
-def inception_score(imgs, device=None, batch_size=32, resize=False, splits=1):
+def inception_score(imgs, batch_size=32, resize=False, splits=1):
     """Computes the inception score of the generated images imgs
 
     Args:
@@ -20,6 +21,7 @@ def inception_score(imgs, device=None, batch_size=32, resize=False, splits=1):
         splits: number of splits
     """
     N = len(imgs)
+    device = FLAGS.device
 
     assert batch_size > 0
     assert N > batch_size
