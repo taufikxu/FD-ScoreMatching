@@ -3,7 +3,7 @@ h5py==2.8.0
 imageio==2.3.0
 lmdb==0.98
 numba==0.38.0
-numpy==1.16.4
+numpy==1.22.0
 numpydoc==0.8.0
 pandas==0.24.2
 pathlib2==2.3.2
