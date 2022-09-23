@@ -11,7 +11,7 @@ pdbpp==0.10.2
 pep8==1.7.1
 Pillow==5.4.1
 pkginfo==1.4.2
-protobuf==3.8.0
+protobuf==3.18.3
 protobuf3-to-dict==0.1.5
 PyYAML==5.1
 requests==2.23.0
